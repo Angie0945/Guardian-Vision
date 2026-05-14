@@ -298,7 +298,8 @@ with col2:
     else:
         st.markdown(
     "<h3 style='color:black; text-align:center;'>📷 Esperando captura...</h3>",
-    unsafe_allow_html=True)
+    unsafe_allow_html=True
+        )
 
 # =========================================================
 # FOOTER
