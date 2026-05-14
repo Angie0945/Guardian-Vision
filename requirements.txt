@@ -1,6 +1,7 @@
 streamlit
 ultralytics
-opencv-python-headless
 paho-mqtt
 streamlit-bokeh-events
+opencv-python-headless
 pillow
+bokeh
