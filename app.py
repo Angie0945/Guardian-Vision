@@ -1,86 +1,79 @@
 import streamlit as st
-from PIL import Image
-import io
-import numpy as np
-from ultralytics import YOLO
 import paho.mqtt.client as paho
 import json
-import random
+import numpy as np
+from PIL import Image
+from ultralytics import YOLO
 from bokeh.models import Button, CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 
 # =========================================================
-# 1. CONFIGURACIÓN Y ESTILOS (Alto Contraste y Cero Espacios)
+# 1. ESTILOS Y CONFIGURACIÓN (Angie Style)
 # =========================================================
 st.set_page_config(page_title="Guardian Vision Pro", layout="wide")
 
 st.markdown("""
 <style>
-    .stApp { background-color: #f4f1fa; color: #1f1f1f; }
-    
-    /* Encabezado con alto contraste */
+    .stApp { background: linear-gradient(135deg, #d9c2ff, #f3e8ff); color: #1f1f1f; }
     .header-container {
         background: linear-gradient(90deg, #2d1457 0%, #6a0dad 100%);
-        padding: 20px; border-radius: 15px; text-align: center;
-        color: #FFFFFF; margin-bottom: 10px;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+        padding: 20px; border-radius: 15px; text-align: center; color: white;
+        margin-bottom: 20px; box-shadow: 0px 4px 15px rgba(0,0,0,0.2);
     }
-
-    /* Tarjetas compactas */
     .project-card {
-        background-color: #ffffff; padding: 15px; border-radius: 15px;
-        border: 2px solid #2d1457; text-align: center;
+        background-color: #ffffffcc; padding: 20px; border-radius: 20px;
+        border: 3px solid #6a0dad; text-align: center;
     }
-
-    /* Eliminar espacios blancos innecesarios */
-    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
-    div[data-testid="stVerticalBlock"] > div { margin-top: -0.5rem !important; }
+    /* Eliminar espacios blancos del componente Bokeh */
+    iframe { background: transparent !important; }
 </style>
-
 <div class="header-container">
-    <h1 style='margin:0; font-size: 32px;'>🛡️ GUARDIAN VISION PRO</h1>
-    <p style='margin:0; font-weight:bold; color: #E0E0E0;'>Seguridad Multimodal: Visión + Voz</p>
+    <h1 style='margin:0;'>🛡️ GUARDIAN VISION PRO</h1>
+    <p style='margin:0;'>Control por Voz MQTT + Inteligencia Artificial</p>
 </div>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2. MQTT Y MODELO (Compatibilidad Paho v2)
+# 2. MODELOS Y MQTT
 # =========================================================
 broker = "broker.mqttdashboard.com"
 port = 1883
 
 @st.cache_resource
-def get_mqtt_client():
-    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "GUARDIAN_ANGIE")
+def setup_mqtt():
+    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "ANGIE_GUARDIAN")
     client.connect(broker, port)
     return client
 
-mqtt_c = get_mqtt_client()
+mqtt_client = setup_mqtt()
 
 @st.cache_resource
 def load_yolo():
     return YOLO("yolov8n.pt")
 
-yolo_model = load_yolo()
+model = load_yolo()
 
 if 'alarma_activa' not in st.session_state:
     st.session_state.alarma_activa = False
 
 # =========================================================
-# 3. INTERFAZ: CONTROL POR VOZ (Lado Izquierdo)
+# 3. INTERFAZ: BOTÓN DE VOZ (BOKEH)
 # =========================================================
-col1, col2 = st.columns([1, 2])
+col1, col2 = st.columns([1, 1.5])
 
 with col1:
     st.markdown('<div class="project-card">', unsafe_allow_html=True)
-    st.subheader("🎤 Control por Voz")
+    st.markdown("### 🎙️ Control de Comando")
     
-    # Botón Bokeh para grabar voz
-    stt_button = Button(label="🎙️ ESCUCHAR COMANDO", width=260, height=70, button_type="primary")
+    # Tu botón exacto de Bokeh
+    stt_button = Button(label="🎧 ESCUCHAR", width=250, height=60)
     stt_button.js_on_event("button_click", CustomJS(code="""
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         var recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
         recognition.lang = 'es-ES';
+
         recognition.onresult = function(e) {
             var value = e.results[0][0].transcript;
             document.dispatchEvent(new CustomEvent("GET_TEXT", {detail: value}));
@@ -88,55 +81,51 @@ with col1:
         recognition.start();
     """))
 
-    result = streamlit_bokeh_events(stt_button, events="GET_TEXT", key="listen", override_height=80)
+    result = streamlit_bokeh_events(
+        stt_button,
+        events="GET_TEXT",
+        key="listen",
+        refresh_on_update=False,
+        override_height=80,
+        debounce_time=0
+    )
 
     if result and "GET_TEXT" in result:
         comando = result.get("GET_TEXT").strip().lower()
-        st.write(f"Comando detectado: **{comando}**")
+        st.info(f"🗣️ Escuché: **{comando}**")
         
+        # Lógica de frases solicitadas
         if "enciende la alarma" in comando or "activar" in comando:
             st.session_state.alarma_activa = True
-            mqtt_c.publish("voice_ctrl", json.dumps({"Act1": "activado"}))
-            st.success("✅ Alarma Encendida")
+            mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "activado"}))
         elif "apaga la alarma" in comando or "desactivar" in comando:
             st.session_state.alarma_activa = False
-            mqtt_c.publish("voice_ctrl", json.dumps({"Act1": "desactivado"}))
-            st.warning("⚠️ Alarma Apagada")
-    
-    st.markdown("---")
+            mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "desactivado"}))
+
+    st.write("---")
     if st.session_state.alarma_activa:
-        st.markdown("<h2 style='color:#d9534f; margin:0;'>🔴 VIGILANDO</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color:red;'>🔴 SISTEMA ACTIVO</h2>", unsafe_allow_html=True)
     else:
-        st.markdown("<h2 style='color:#5cb85c; margin:0;'>🟢 STANDBY</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color:green;'>🟢 SISTEMA OFF</h2>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
-# 4. VIGILANCIA: VISIÓN ARTIFICIAL (Lado Derecho)
+# 4. VIGILANCIA: CÁMARA Y YOLO
 # =========================================================
 with col2:
-    st.markdown('<div class="project-card">', unsafe_allow_html=True)
-    img_file_buffer = st.camera_input("📸 Cámara de Seguridad")
+    img_buffer = st.camera_input("📸 Cámara de Seguridad")
 
-    if img_file_buffer and st.session_state.alarma_activa:
-        img = Image.open(img_file_buffer).convert("RGB")
-        results = yolo_model(np.array(img), conf=0.4)
+    if img_buffer and st.session_state.alarma_activa:
+        img = Image.open(img_buffer).convert("RGB")
+        results = model(np.array(img), conf=0.4)
         
-        # Detección de personas
-        clases_detectadas = [yolo_model.names[int(box.cls)] for box in results[0].boxes]
+        # Buscar personas
+        detecciones = [model.names[int(box.cls)] for box in results[0].boxes]
         
-        if "person" in clases_detectadas:
+        if "person" in detecciones:
             st.error("🚨 ¡INTRUSO DETECTADO!")
-            mqtt_c.publish("voice_ctrl", json.dumps({"Act1": "INTRUSO"}))
-            
-            # Banco de frases para el feedback visual
-            frases = ["¡Alerta! Alguien entró en la zona.", "Movimiento detectado.", "Seguridad activada."]
-            st.info(f"🗣️ {random.choice(frases)}")
-            
-            # Imagen con cuadros de detección
+            mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "INTRUSO"}))
             st.image(results[0].plot()[:, :, ::-1], use_container_width=True)
         else:
             st.image(img, use_container_width=True)
-            st.write("✅ Todo en orden...")
-    elif not st.session_state.alarma_activa:
-        st.info("😴 Sistema en reposo. Di 'Enciende la alarma' para comenzar.")
-    st.markdown('</div>', unsafe_allow_html=True)
+            st.success("🔍 Área despejada")
