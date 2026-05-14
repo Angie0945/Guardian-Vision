@@ -1,8 +1,3 @@
-# =========================================================
-# GUARDIAN VISION PRO - VIGILANCIA EN TIEMPO REAL
-# Angie Version FINAL - Monitoreo continuo + Voz + MQTT + Contraste
-# =========================================================
-
 import streamlit as st
 import paho.mqtt.client as paho
 import json
@@ -11,12 +6,10 @@ from PIL import Image
 from ultralytics import YOLO
 from bokeh.models import Button, CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
-from streamlit_autorefresh import st_autorefresh
-import time
 import random
 
 # =========================================================
-# CONFIGURACIÓN GENERAL
+# CONFIGURACIÓN
 # =========================================================
 st.set_page_config(
     page_title="Guardian Vision Pro",
@@ -24,56 +17,50 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Refresco automático cada 3 segundos para vigilancia continua
-st_autorefresh(interval=3000, key="guardian_refresh")
-
 # =========================================================
-# ESTILOS - FONDO BLANCO + TEXTO NEGRO + ALTO CONTRASTE
+# ESTILOS VISUALES
 # =========================================================
 st.markdown("""
 <style>
-/* Fondo general */
 .stApp {
     background-color: white;
     color: black;
 }
 
-/* Todo el texto negro */
 html, body, [class*="css"] {
     color: black !important;
 }
 
 /* Sidebar */
 section[data-testid="stSidebar"] {
-    background-color: #f4f4f4 !important;
-    border-right: 3px solid #1f4e79;
+    background-color: #f2f2f2 !important;
+    border-right: 3px solid #1d4ed8;
 }
 
-/* Encabezado */
+/* Header */
 .main-header {
-    background: linear-gradient(90deg, #0f172a, #1d4ed8);
+    background: linear-gradient(90deg, #111827, #2563eb);
     padding: 25px;
-    border-radius: 15px;
+    border-radius: 18px;
     text-align: center;
     color: white !important;
     margin-bottom: 20px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.2);
 }
 
 /* Tarjetas */
 .card {
-    background-color: #ffffff;
+    background: white;
     padding: 20px;
     border-radius: 18px;
-    border: 3px solid #1d4ed8;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+    border: 2px solid #2563eb;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
     margin-bottom: 20px;
 }
 
-/* Botones grandes */
+/* Botones Streamlit */
 .stButton>button {
     width: 100%;
-    background-color: #1d4ed8;
+    background-color: #2563eb;
     color: white;
     font-size: 18px;
     font-weight: bold;
@@ -83,7 +70,7 @@ section[data-testid="stSidebar"] {
 }
 
 .stButton>button:hover {
-    background-color: #0f172a;
+    background-color: #111827;
     color: white;
 }
 
@@ -94,27 +81,25 @@ div.bk-root {
     margin-top: 15px !important;
 }
 
-/* Alertas */
-.alert-box {
+/* Estados */
+.estado-on {
     padding: 15px;
-    border-radius: 12px;
-    font-weight: bold;
-    text-align: center;
-    font-size: 22px;
-}
-
-/* Estado ON */
-.on-state {
     background-color: #fee2e2;
     color: #b91c1c;
-    border: 2px solid red;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
 }
 
-/* Estado OFF */
-.off-state {
+.estado-off {
+    padding: 15px;
     background-color: #dcfce7;
     color: #166534;
-    border: 2px solid green;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -125,34 +110,27 @@ div.bk-root {
 st.markdown("""
 <div class="main-header">
     <h1>🛡️ GUARDIAN VISION PRO</h1>
-    <h3>Vigilancia Inteligente en Tiempo Real | Voz + IA + MQTT</h3>
+    <h3>Seguridad Inteligente | Voz + IA + MQTT</h3>
 </div>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# SIDEBAR - INSTRUCCIONES
+# SIDEBAR
 # =========================================================
 with st.sidebar:
     st.title("📘 Instrucciones")
-    st.markdown("""
-### 🎙️ Control por Voz:
-**Presiona ESCUCHAR y di:**
-- **“enciende la alarma”**
-- **“apaga la alarma”**
+    st.write("### 🎙️ Voz")
+    st.write("Presiona ESCUCHAR y di:")
+    st.write("- enciende la alarma")
+    st.write("- apaga la alarma")
 
-### 📸 Vigilancia:
-- La cámara monitorea constantemente.
-- Solo genera alerta si la alarma está ACTIVADA.
-- Detecta personas automáticamente.
+    st.write("### 🔘 Manual")
+    st.write("- Botón de encendido")
+    st.write("- Botón de apagado")
 
-### 🚨 Respuesta:
-- MQTT envía señal al hardware
-- Alerta visual
-- Mensaje de intruso
-
-### 🛡️ Recomendación:
-Mantén la cámara apuntando al área de vigilancia.
-""")
+    st.write("### 📸 Vigilancia")
+    st.write("La cámara analiza cada imagen capturada.")
+    st.write("Si detecta una persona con la alarma activa, genera alerta.")
 
 # =========================================================
 # MQTT
@@ -162,7 +140,7 @@ port = 1883
 
 @st.cache_resource
 def setup_mqtt():
-    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "ANGIE_GUARDIAN_PRO")
+    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "ANGIE_GUARDIAN")
     client.connect(broker, port)
     return client
 
@@ -178,35 +156,31 @@ def load_model():
 model = load_model()
 
 # =========================================================
-# ESTADOS
+# ESTADO
 # =========================================================
 if "alarma_activa" not in st.session_state:
     st.session_state.alarma_activa = False
 
-if "ultima_alerta" not in st.session_state:
-    st.session_state.ultima_alerta = ""
-
-# Frases de alerta
-frases_intruso = [
-    "🚨 Atención: Intruso detectado.",
-    "⚠️ Alerta máxima: Persona no autorizada.",
-    "🔴 Movimiento sospechoso detectado.",
-    "🚨 Seguridad activada: Presencia humana encontrada."
+frases_alerta = [
+    "🚨 Intruso detectado",
+    "⚠️ Persona no autorizada",
+    "🔴 Movimiento sospechoso",
+    "🚨 Alarma activada por presencia humana"
 ]
 
 # =========================================================
-# LAYOUT PRINCIPAL
+# COLUMNAS
 # =========================================================
 col1, col2 = st.columns([1, 2])
 
 # =========================================================
-# PANEL DE CONTROL
+# PANEL IZQUIERDO
 # =========================================================
 with col1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("🎙️ Panel de Voz")
 
-    # BOTÓN DE ESCUCHA REAL
+    st.subheader("🎙️ Control por Voz")
+
     stt_button = Button(label="🎙️ ESCUCHAR", width=250, height=70, button_type="success")
 
     stt_button.js_on_event("button_click", CustomJS(code="""
@@ -233,10 +207,10 @@ with col1:
         debounce_time=0
     )
 
-    # Procesar voz
     if result and "GET_TEXT" in result:
         comando = result.get("GET_TEXT").lower().strip()
-        st.success(f"🗣️ Comando detectado: {comando}")
+
+        st.success(f"🗣️ Comando: {comando}")
 
         if "enciende la alarma" in comando:
             st.session_state.alarma_activa = True
@@ -246,7 +220,6 @@ with col1:
             st.session_state.alarma_activa = False
             mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "desactivado"}))
 
-    # Botones manuales
     st.write("### 🔘 Control Manual")
 
     if st.button("🟢 ENCENDER ALARMA"):
@@ -257,35 +230,35 @@ with col1:
         st.session_state.alarma_activa = False
         mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "desactivado"}))
 
-    # Estado visual
     if st.session_state.alarma_activa:
-        st.markdown('<div class="alert-box on-state">🔴 ALARMA ACTIVADA</div>', unsafe_allow_html=True)
+        st.markdown('<div class="estado-on">🔴 ALARMA ACTIVADA</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="alert-box off-state">🟢 ALARMA DESACTIVADA</div>', unsafe_allow_html=True)
+        st.markdown('<div class="estado-off">🟢 ALARMA APAGADA</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
-# CÁMARA DE VIGILANCIA CONTINUA
+# PANEL DERECHO - CÁMARA
 # =========================================================
 with col2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("📸 Cámara de Vigilancia en Tiempo Real")
 
-    img_buffer = st.camera_input("")
+    st.subheader("📸 Vigilancia Inteligente")
 
-    if img_buffer is not None:
+    st.info("La cámara analiza cada captura. Para monitoreo continuo, sigue tomando imágenes.")
+
+    img_buffer = st.camera_input("Captura de vigilancia")
+
+    if img_buffer:
         img = Image.open(img_buffer).convert("RGB")
         frame = np.array(img)
 
-        # Detección continua
         results = model(frame, conf=0.45)
 
         detecciones = [model.names[int(box.cls)] for box in results[0].boxes]
 
-        # Si hay persona y alarma activa
         if "person" in detecciones and st.session_state.alarma_activa:
-            alerta = random.choice(frases_intruso)
+            alerta = random.choice(frases_alerta)
 
             st.error(alerta)
 
@@ -293,17 +266,22 @@ with col2:
                 "Act1": "INTRUSO"
             }))
 
-            st.image(results[0].plot()[:, :, ::-1], caption="🚨 Intruso Detectado", use_container_width=True)
+            st.image(
+                results[0].plot()[:, :, ::-1],
+                caption="🚨 Intruso Detectado",
+                use_container_width=True
+            )
 
         else:
-            st.image(frame, caption="🛡️ Monitoreo Activo", use_container_width=True)
+            st.image(
+                frame,
+                caption="🛡️ Área Segura",
+                use_container_width=True
+            )
 
             if st.session_state.alarma_activa:
-                st.success("Área segura")
+                st.success("Sistema activo sin amenazas.")
             else:
-                st.info("Sistema en espera. Activa la alarma para protección.")
-
-    else:
-        st.warning("Activa la cámara para iniciar vigilancia.")
+                st.warning("Sistema apagado.")
 
     st.markdown('</div>', unsafe_allow_html=True)
