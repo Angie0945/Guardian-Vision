@@ -1,7 +1,8 @@
 streamlit
-ultralytics
 paho-mqtt
+numpy
+Pillow
+ultralytics
 streamlit-bokeh-events
+bokeh==2.4.3
 opencv-python-headless
-pillow
-bokeh
