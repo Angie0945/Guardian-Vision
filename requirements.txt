@@ -3,7 +3,5 @@ paho-mqtt==1.6.1
 numpy==1.26.4
 Pillow==10.2.0
 opencv-python-headless==4.9.0.80
-cvlib==0.2.7
 streamlit-bokeh-events==0.1.2
 bokeh==2.4.3
-tensorflow==2.15.0
