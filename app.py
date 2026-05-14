@@ -1,5 +1,5 @@
 # =========================================================
-# GUARDIAN VISION - CÓDIGO COMPLETO CON VOZ CORREGIDA
+# GUARDIAN VISION - CÓDIGO COMPLETO CON VOZ 
 # =========================================================
 
 import streamlit as st
