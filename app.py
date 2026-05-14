@@ -38,7 +38,9 @@ st.markdown("""
 # =========================================================
 broker = "broker.mqttdashboard.com" # El que usas en tus códigos
 port = 1883
-client1 = paho.Client("GUARDIAN_PRO")
+from paho.mqtt import client as paho # Asegúrate de tener el import así
+
+client1 = paho.Client(paho.CallbackAPIVersion.VERSION1, "GUARDIAN_PRO")
 
 @st.cache_resource
 def load_yolo():
