@@ -166,7 +166,7 @@ col1, col2 = st.columns([1, 2])
 with col1:
 
     # Estado visual dinámico
-    if st.session_state.alarma_activa:
+if st.session_state.alarma_activa:
     panel_bg = "#dcfce7"
     panel_border = "#16a34a"
     panel_text = "#166534"
