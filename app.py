@@ -1,7 +1,8 @@
 # =========================================================
-# 🛡️ GUARDIAN VISION - VERSIÓN FINAL MEJORADA
-# Fondo blanco + texto negro + control dinámico verde/rojo
-# Voz + MQTT + Cámara
+# 🛡️ GUARDIAN VISION - VERSIÓN FINAL CORREGIDA
+# Fondo blanco + letras negras + alarma:
+# VERDE = ACTIVADA
+# ROJO = DESACTIVADA
 # =========================================================
 
 import streamlit as st
@@ -26,17 +27,14 @@ st.set_page_config(
 # =========================================================
 st.markdown("""
 <style>
-/* Fondo general */
 .stApp {
     background-color: white !important;
 }
 
-/* Texto general */
 html, body, [class*="css"] {
     color: black !important;
 }
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #f3f4f6 !important;
     color: black !important;
@@ -46,7 +44,6 @@ section[data-testid="stSidebar"] * {
     color: black !important;
 }
 
-/* Header principal */
 .header-box {
     background: linear-gradient(90deg, #111827, #2563eb);
     padding: 25px;
@@ -56,7 +53,6 @@ section[data-testid="stSidebar"] * {
     margin-bottom: 20px;
 }
 
-/* Tarjetas */
 .card {
     background-color: #ffffff;
     padding: 25px;
@@ -66,7 +62,6 @@ section[data-testid="stSidebar"] * {
     margin-bottom: 20px;
 }
 
-/* Botones Streamlit */
 .stButton > button {
     width: 100%;
     background-color: #2563eb !important;
@@ -79,7 +74,6 @@ section[data-testid="stSidebar"] * {
     margin-top: 8px !important;
 }
 
-/* Bokeh botón */
 div.bk-root {
     display: flex !important;
     justify-content: center !important;
@@ -165,19 +159,25 @@ col1, col2 = st.columns([1, 2])
 # =========================================================
 with col1:
 
-    # Estado visual dinámico
-if st.session_state.alarma_activa:
-    panel_bg = "#dcfce7"
-    panel_border = "#16a34a"
-    panel_text = "#166534"
-    estado_texto = "🟢 ALARMA ACTIVADA"
-else:
-    panel_bg = "#fee2e2"
-    panel_border = "#dc2626"
-    panel_text = "#991b1b"
-    estado_texto = "🔴 ALARMA DESACTIVADA"
+    # =====================================================
+    # ESTADO VISUAL CORREGIDO
+    # VERDE = ACTIVADA
+    # ROJO = DESACTIVADA
+    # =====================================================
+    if st.session_state.alarma_activa:
+        panel_bg = "#dcfce7"
+        panel_border = "#16a34a"
+        panel_text = "#166534"
+        estado_texto = "🟢 ALARMA ACTIVADA"
+    else:
+        panel_bg = "#fee2e2"
+        panel_border = "#dc2626"
+        panel_text = "#991b1b"
+        estado_texto = "🔴 ALARMA DESACTIVADA"
 
-    # Encabezado del panel
+    # =====================================================
+    # TÍTULO PANEL
+    # =====================================================
     st.markdown(f"""
     <div style="
         background-color:{panel_bg};
@@ -297,9 +297,11 @@ with col2:
 
     else:
         st.markdown(
-    "<h3 style='color:black; text-align:center;'>📷 Esperando captura...</h3>",
-    unsafe_allow_html=True
+            "<h3 style='color:black; text-align:center;'>📷 Esperando captura...</h3>",
+            unsafe_allow_html=True
         )
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
 # FOOTER
