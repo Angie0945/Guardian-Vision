@@ -24,24 +24,29 @@ st.markdown("""
         background-color: #ffffffcc; padding: 20px; border-radius: 20px;
         border: 3px solid #6a0dad; text-align: center;
     }
-    /* Eliminar espacios blancos del componente Bokeh */
-    iframe { background: transparent !important; }
+    /* Estilo para que el botón de Bokeh se vea grande y centrado */
+    div.bk-root {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
 </style>
 <div class="header-container">
     <h1 style='margin:0;'>🛡️ GUARDIAN VISION PRO</h1>
-    <p style='margin:0;'>Control por Voz MQTT + Inteligencia Artificial</p>
+    <p style='margin:0;'>Control por Voz MQTT + IA</p>
 </div>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2. MODELOS Y MQTT
+# 2. CONFIGURACIÓN MQTT Y MODELOS
 # =========================================================
 broker = "broker.mqttdashboard.com"
 port = 1883
 
 @st.cache_resource
 def setup_mqtt():
-    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "ANGIE_GUARDIAN")
+    # Usamos VERSION1 para compatibilidad con Paho v2.0
+    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "ANGIE_GUARDIAN_PRO")
     client.connect(broker, port)
     return client
 
@@ -57,16 +62,17 @@ if 'alarma_activa' not in st.session_state:
     st.session_state.alarma_activa = False
 
 # =========================================================
-# 3. INTERFAZ: BOTÓN DE VOZ (BOKEH)
+# 3. INTERFAZ: EL BOTÓN DE VOZ (BOKEH)
 # =========================================================
 col1, col2 = st.columns([1, 1.5])
 
 with col1:
     st.markdown('<div class="project-card">', unsafe_allow_html=True)
     st.markdown("### 🎙️ Control de Comando")
+    st.write("Presiona el botón para hablar")
     
-    # Tu botón exacto de Bokeh
-    stt_button = Button(label="🎧 ESCUCHAR", width=250, height=60)
+    # ESTE ES EL BOTÓN QUE NECESITAS
+    stt_button = Button(label="🎧 ESCUCHAR", width=250, height=70, button_type="success")
     stt_button.js_on_event("button_click", CustomJS(code="""
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         var recognition = new SpeechRecognition();
@@ -81,6 +87,7 @@ with col1:
         recognition.start();
     """))
 
+    # Captura el evento del botón
     result = streamlit_bokeh_events(
         stt_button,
         events="GET_TEXT",
@@ -94,32 +101,35 @@ with col1:
         comando = result.get("GET_TEXT").strip().lower()
         st.info(f"🗣️ Escuché: **{comando}**")
         
-        # Lógica de frases solicitadas
+        # Procesar frases
         if "enciende la alarma" in comando or "activar" in comando:
             st.session_state.alarma_activa = True
             mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "activado"}))
+            st.success("Alarma encendida")
         elif "apaga la alarma" in comando or "desactivar" in comando:
             st.session_state.alarma_activa = False
             mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "desactivado"}))
+            st.warning("Alarma apagada")
 
     st.write("---")
     if st.session_state.alarma_activa:
-        st.markdown("<h2 style='color:red;'>🔴 SISTEMA ACTIVO</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color:red;'>🔴 SISTEMA: ON</h2>", unsafe_allow_html=True)
     else:
-        st.markdown("<h2 style='color:green;'>🟢 SISTEMA OFF</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color:green;'>🟢 SISTEMA: OFF</h2>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
-# 4. VIGILANCIA: CÁMARA Y YOLO
+# 4. VIGILANCIA POR CÁMARA
 # =========================================================
 with col2:
+    st.markdown('<div class="project-card">', unsafe_allow_html=True)
     img_buffer = st.camera_input("📸 Cámara de Seguridad")
 
     if img_buffer and st.session_state.alarma_activa:
         img = Image.open(img_buffer).convert("RGB")
         results = model(np.array(img), conf=0.4)
         
-        # Buscar personas
+        # Lógica de detección de personas
         detecciones = [model.names[int(box.cls)] for box in results[0].boxes]
         
         if "person" in detecciones:
@@ -128,4 +138,7 @@ with col2:
             st.image(results[0].plot()[:, :, ::-1], use_container_width=True)
         else:
             st.image(img, use_container_width=True)
-            st.success("🔍 Área despejada")
+            st.success("🔍 Área segura")
+    elif not st.session_state.alarma_activa:
+        st.write("Vigilancia desactivada. Usa el comando de voz.")
+    st.markdown('</div>', unsafe_allow_html=True)
