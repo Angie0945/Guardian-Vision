@@ -307,4 +307,4 @@ with col2:
 # FOOTER
 # =========================================================
 st.markdown("---")
-st.caption("Guardian Vision © Proyecto Interfaces Multimodales | Angie Vargas - Isabella Saldarriaga - Salome Rivero")
+st.markdown("<p style='color:black; text-align:center;'>Guardian Vision © Proyecto Interfaces Multimodales | Angie Vargas - Isabella Saldarriaga - Salome Rivero</p>", unsafe_allow_html=True)
