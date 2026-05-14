@@ -167,15 +167,15 @@ with col1:
 
     # Estado visual dinámico
     if st.session_state.alarma_activa:
-        panel_bg = "#fee2e2"
-        panel_border = "#dc2626"
-        panel_text = "#991b1b"
-        estado_texto = "🔴 ALARMA ACTIVADA"
-    else:
-        panel_bg = "#dcfce7"
-        panel_border = "#16a34a"
-        panel_text = "#166534"
-        estado_texto = "🟢 ALARMA DESACTIVADA"
+    panel_bg = "#dcfce7"
+    panel_border = "#16a34a"
+    panel_text = "#166534"
+    estado_texto = "🟢 ALARMA ACTIVADA"
+else:
+    panel_bg = "#fee2e2"
+    panel_border = "#dc2626"
+    panel_text = "#991b1b"
+    estado_texto = "🔴 ALARMA DESACTIVADA"
 
     # Encabezado del panel
     st.markdown(f"""
@@ -296,9 +296,9 @@ with col2:
             st.success("✅ Monitoreo realizado (alarma apagada)")
 
     else:
-        st.info("📷 Esperando captura...")
-
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(
+    "<h3 style='color:black; text-align:center;'>📷 Esperando captura...</h3>",
+    unsafe_allow_html=True)
 
 # =========================================================
 # FOOTER
