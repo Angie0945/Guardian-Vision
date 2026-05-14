@@ -1,8 +1,5 @@
 # =========================================================
-# 🛡️ GUARDIAN VISION - VERSIÓN FINAL CORREGIDA
-# Fondo blanco + letras negras + alarma:
-# VERDE = ACTIVADA
-# ROJO = DESACTIVADA
+# GUARDIAN VISION - CÓDIGO COMPLETO CON VOZ CORREGIDA
 # =========================================================
 
 import streamlit as st
@@ -23,7 +20,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# ESTILOS GLOBALES
+# ESTILOS
 # =========================================================
 st.markdown("""
 <style>
@@ -37,7 +34,6 @@ html, body, [class*="css"] {
 
 section[data-testid="stSidebar"] {
     background-color: #f3f4f6 !important;
-    color: black !important;
 }
 
 section[data-testid="stSidebar"] * {
@@ -54,7 +50,7 @@ section[data-testid="stSidebar"] * {
 }
 
 .card {
-    background-color: #ffffff;
+    background-color: white;
     padding: 25px;
     border-radius: 18px;
     border: 2px solid #d1d5db;
@@ -159,11 +155,7 @@ col1, col2 = st.columns([1, 2])
 # =========================================================
 with col1:
 
-    # =====================================================
-    # ESTADO VISUAL CORREGIDO
-    # VERDE = ACTIVADA
-    # ROJO = DESACTIVADA
-    # =====================================================
+    # ESTADO
     if st.session_state.alarma_activa:
         panel_bg = "#dcfce7"
         panel_border = "#16a34a"
@@ -175,16 +167,13 @@ with col1:
         panel_text = "#991b1b"
         estado_texto = "🔴 ALARMA DESACTIVADA"
 
-    # =====================================================
-    # TÍTULO PANEL
-    # =====================================================
+    # TÍTULO
     st.markdown(f"""
     <div style="
         background-color:{panel_bg};
         padding:25px;
         border-radius:18px;
         border:3px solid {panel_border};
-        box-shadow:0px 4px 15px rgba(0,0,0,0.08);
         margin-bottom:20px;
     ">
         <h2 style="color:black; text-align:center;">🎙️ Control Inteligente</h2>
@@ -192,26 +181,38 @@ with col1:
     """, unsafe_allow_html=True)
 
     # =====================================================
-    # BOTÓN DE VOZ
+    # BOTÓN VOZ
     # =====================================================
     stt_button = Button(label="🎙️ ESCUCHAR", width=240, height=70)
 
     stt_button.js_on_event("button_click", CustomJS(code="""
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        var recognition = new SpeechRecognition();
 
-        recognition.lang = 'es-ES';
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        if (!SpeechRecognition) {
+            alert("El navegador no soporta reconocimiento de voz");
+        } else {
+            var recognition = new SpeechRecognition();
 
-        recognition.onresult = function(e) {
-            var value = e.results[0][0].transcript;
-            document.dispatchEvent(
-                new CustomEvent("GET_TEXT", {detail: value})
-            );
-        };
+            recognition.lang = 'es-ES';
+            recognition.continuous = false;
+            recognition.interimResults = false;
 
-        recognition.start();
+            recognition.onresult = function(e) {
+                var value = e.results[0][0].transcript;
+
+                document.dispatchEvent(
+                    new CustomEvent("GET_TEXT", {
+                        detail: value
+                    })
+                );
+            };
+
+            recognition.onerror = function(e) {
+                console.log("Error:", e.error);
+            };
+
+            recognition.start();
+        }
     """))
 
     result = streamlit_bokeh_events(
@@ -224,19 +225,42 @@ with col1:
     )
 
     # =====================================================
-    # PROCESAR VOZ
+    # PROCESAR VOZ CORREGIDO
     # =====================================================
-    if result and "GET_TEXT" in result:
-        comando = result["GET_TEXT"].strip().lower()
-        st.session_state.ultimo_comando = comando
+    if result:
+        st.write("DEBUG RESULTADO:", result)
 
-        if "enciende" in comando:
-            st.session_state.alarma_activa = True
-            enviar_mqtt("activado")
+        if "GET_TEXT" in result:
+            comando = result.get("GET_TEXT", "").strip().lower()
 
-        elif "apaga" in comando:
-            st.session_state.alarma_activa = False
-            enviar_mqtt("desactivado")
+            st.session_state.ultimo_comando = comando
+
+            st.success(f"🎤 Se escuchó: {comando}")
+
+            if (
+                "enciende la alarma" in comando or
+                "activar alarma" in comando or
+                "enciende alarma" in comando or
+                "activar" in comando or
+                "encender" in comando
+            ):
+                st.session_state.alarma_activa = True
+                enviar_mqtt("activado")
+                st.success("🟢 Alarma ACTIVADA")
+
+            elif (
+                "apaga la alarma" in comando or
+                "desactiva la alarma" in comando or
+                "apaga alarma" in comando or
+                "desactivar" in comando or
+                "apagar" in comando
+            ):
+                st.session_state.alarma_activa = False
+                enviar_mqtt("desactivado")
+                st.warning("🔴 Alarma DESACTIVADA")
+
+            else:
+                st.error("⚠️ Comando no reconocido. Intenta de nuevo.")
 
     # =====================================================
     # ÚLTIMO COMANDO
@@ -307,4 +331,7 @@ with col2:
 # FOOTER
 # =========================================================
 st.markdown("---")
-st.markdown("<p style='color:black; text-align:center;'>Guardian Vision © Proyecto Interfaces Multimodales | Angie Vargas - Isabella Saldarriaga - Salome Rivero</p>", unsafe_allow_html=True)
+st.markdown(
+    "<p style='color:black; text-align:center;'>Guardian Vision © Proyecto Interfaces Multimodales | Angie Vargas - Isabella Saldarriaga - Salome Rivero</p>",
+    unsafe_allow_html=True
+)
