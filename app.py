@@ -4,6 +4,9 @@ import numpy as np
 from paho.mqtt import client as mqtt_client
 import time
 
+# Úsalo así para que funcione en la web
+img_file_buffer = st.camera_input("Monitoreo en Tiempo Real")
+
 # --- CONFIGURACIÓN MQTT ---
 BROKER = 'broker.hivemq.com'
 PORT = 1883
