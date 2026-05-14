@@ -335,4 +335,3 @@ st.markdown(
     "<p style='color:black; text-align:center;'>Guardian Vision © Proyecto Interfaces Multimodales | Angie Vargas - Isabella Saldarriaga - Salome Rivero</p>",
     unsafe_allow_html=True
 )
-)
