@@ -1,6 +1,6 @@
 streamlit
 paho-mqtt
-numpy
+numpy==1.26.4
 Pillow
 ultralytics
 streamlit-bokeh-events
