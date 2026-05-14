@@ -2,23 +2,24 @@ import streamlit as st
 import paho.mqtt.client as paho
 import json
 import numpy as np
-from PIL import Image
+import av
 from ultralytics import YOLO
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
 from bokeh.models import Button, CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 import random
 
 # =========================================================
-# CONFIGURACIÓN
+# CONFIGURACIÓN GENERAL
 # =========================================================
 st.set_page_config(
-    page_title="Guardian Vision Pro",
+    page_title="Guardian Vision ULTRA",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # =========================================================
-# ESTILOS VISUALES
+# ESTILOS PREMIUM
 # =========================================================
 st.markdown("""
 <style>
@@ -33,31 +34,32 @@ html, body, [class*="css"] {
 
 /* Sidebar */
 section[data-testid="stSidebar"] {
-    background-color: #f2f2f2 !important;
-    border-right: 3px solid #1d4ed8;
+    background-color: #f3f4f6 !important;
+    border-right: 4px solid #111827;
 }
 
 /* Header */
 .main-header {
     background: linear-gradient(90deg, #111827, #2563eb);
-    padding: 25px;
-    border-radius: 18px;
+    padding: 28px;
+    border-radius: 20px;
     text-align: center;
     color: white !important;
     margin-bottom: 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
 /* Tarjetas */
 .card {
     background: white;
-    padding: 20px;
+    padding: 22px;
     border-radius: 18px;
-    border: 2px solid #2563eb;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    border: 2px solid #d1d5db;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
     margin-bottom: 20px;
 }
 
-/* Botones Streamlit */
+/* Botones */
 .stButton>button {
     width: 100%;
     background-color: #2563eb;
@@ -74,18 +76,18 @@ section[data-testid="stSidebar"] {
     color: white;
 }
 
-/* Bokeh botón */
+/* Bokeh */
 div.bk-root {
     display: flex !important;
     justify-content: center !important;
-    margin-top: 15px !important;
+    margin-top: 10px !important;
 }
 
-/* Estados */
+/* Estado */
 .estado-on {
-    padding: 15px;
+    padding: 16px;
     background-color: #fee2e2;
-    color: #b91c1c;
+    color: #991b1b;
     border-radius: 12px;
     text-align: center;
     font-size: 24px;
@@ -93,7 +95,7 @@ div.bk-root {
 }
 
 .estado-off {
-    padding: 15px;
+    padding: 16px;
     background-color: #dcfce7;
     color: #166534;
     border-radius: 12px;
@@ -109,8 +111,8 @@ div.bk-root {
 # =========================================================
 st.markdown("""
 <div class="main-header">
-    <h1>🛡️ GUARDIAN VISION PRO</h1>
-    <h3>Seguridad Inteligente | Voz + IA + MQTT</h3>
+    <h1>🛡️ GUARDIAN VISION ULTRA</h1>
+    <h3>Seguridad Inteligente en Vivo | Voz + IA + MQTT</h3>
 </div>
 """, unsafe_allow_html=True)
 
@@ -118,19 +120,21 @@ st.markdown("""
 # SIDEBAR
 # =========================================================
 with st.sidebar:
-    st.title("📘 Instrucciones")
-    st.write("### 🎙️ Voz")
-    st.write("Presiona ESCUCHAR y di:")
+    st.title("📘 Panel de Instrucciones")
+    st.write("### 🎙️ Comandos de Voz")
     st.write("- enciende la alarma")
     st.write("- apaga la alarma")
 
-    st.write("### 🔘 Manual")
+    st.write("### 🔘 Control Manual")
     st.write("- Botón de encendido")
     st.write("- Botón de apagado")
 
-    st.write("### 📸 Vigilancia")
-    st.write("La cámara analiza cada imagen capturada.")
-    st.write("Si detecta una persona con la alarma activa, genera alerta.")
+    st.write("### 🎥 Monitoreo")
+    st.write("La cámara analiza en vivo.")
+    st.write("Solo alerta si la alarma está activa.")
+
+    st.write("### 🚨 Detección")
+    st.write("Detecta personas automáticamente.")
 
 # =========================================================
 # MQTT
@@ -140,7 +144,7 @@ port = 1883
 
 @st.cache_resource
 def setup_mqtt():
-    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "ANGIE_GUARDIAN")
+    client = paho.Client(paho.CallbackAPIVersion.VERSION1, "ANGIE_ULTRA")
     client.connect(broker, port)
     return client
 
@@ -156,32 +160,52 @@ def load_model():
 model = load_model()
 
 # =========================================================
-# ESTADO
+# SESSION
 # =========================================================
 if "alarma_activa" not in st.session_state:
     st.session_state.alarma_activa = False
 
 frases_alerta = [
-    "🚨 Intruso detectado",
-    "⚠️ Persona no autorizada",
-    "🔴 Movimiento sospechoso",
-    "🚨 Alarma activada por presencia humana"
+    "🚨 INTRUSO DETECTADO",
+    "⚠️ PERSONA NO AUTORIZADA",
+    "🔴 MOVIMIENTO SOSPECHOSO",
+    "🚨 ALERTA DE SEGURIDAD"
 ]
 
 # =========================================================
-# COLUMNAS
+# VIDEO PROCESSOR
+# =========================================================
+class VideoProcessor(VideoProcessorBase):
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+
+        if st.session_state.alarma_activa:
+            results = model(img, conf=0.45)
+
+            detecciones = [model.names[int(box.cls)] for box in results[0].boxes]
+
+            if "person" in detecciones:
+                mqtt_client.publish("voice_ctrl", json.dumps({"Act1": "INTRUSO"}))
+
+            annotated = results[0].plot()
+            return av.VideoFrame.from_ndarray(annotated, format="bgr24")
+
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+# =========================================================
+# LAYOUT
 # =========================================================
 col1, col2 = st.columns([1, 2])
 
 # =========================================================
-# PANEL IZQUIERDO
+# PANEL CONTROL
 # =========================================================
 with col1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
     st.subheader("🎙️ Control por Voz")
 
-    stt_button = Button(label="🎙️ ESCUCHAR", width=250, height=70, button_type="success")
+    stt_button = Button(label="🎙️ ESCUCHAR", width=240, height=70, button_type="success")
 
     stt_button.js_on_event("button_click", CustomJS(code="""
         var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -238,50 +262,28 @@ with col1:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
-# PANEL DERECHO - CÁMARA
+# PANEL VIDEO EN VIVO
 # =========================================================
 with col2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    st.subheader("📸 Vigilancia Inteligente")
+    st.subheader("🎥 Vigilancia en Tiempo Real")
 
-    st.info("La cámara analiza cada captura. Para monitoreo continuo, sigue tomando imágenes.")
+    rtc_configuration = RTCConfiguration(
+        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+    )
 
-    img_buffer = st.camera_input("Captura de vigilancia")
+    webrtc_streamer(
+        key="guardian-vision",
+        video_processor_factory=VideoProcessor,
+        rtc_configuration=rtc_configuration,
+        media_stream_constraints={"video": True, "audio": False},
+        async_processing=True,
+    )
 
-    if img_buffer:
-        img = Image.open(img_buffer).convert("RGB")
-        frame = np.array(img)
-
-        results = model(frame, conf=0.45)
-
-        detecciones = [model.names[int(box.cls)] for box in results[0].boxes]
-
-        if "person" in detecciones and st.session_state.alarma_activa:
-            alerta = random.choice(frases_alerta)
-
-            st.error(alerta)
-
-            mqtt_client.publish("voice_ctrl", json.dumps({
-                "Act1": "INTRUSO"
-            }))
-
-            st.image(
-                results[0].plot()[:, :, ::-1],
-                caption="🚨 Intruso Detectado",
-                use_container_width=True
-            )
-
-        else:
-            st.image(
-                frame,
-                caption="🛡️ Área Segura",
-                use_container_width=True
-            )
-
-            if st.session_state.alarma_activa:
-                st.success("Sistema activo sin amenazas.")
-            else:
-                st.warning("Sistema apagado.")
+    if st.session_state.alarma_activa:
+        st.error(random.choice(frases_alerta))
+    else:
+        st.success("Sistema en espera.")
 
     st.markdown('</div>', unsafe_allow_html=True)
