@@ -1,4 +1,6 @@
 streamlit
+ultralytics
 opencv-python-headless
 paho-mqtt
-gTTS
+streamlit-bokeh-events
+pillow
